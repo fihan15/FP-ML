@@ -1,0 +1,2 @@
+Baseline_Terbaik,Baseline_Split,Baseline_RMSE,Baseline_MAE,Model_Final,Model_Final_Split,Model_Final_RMSE,Model_Final_MAE,Model_Final_NDCG@10,Catatan
+GlobalMean,80:20,1.374534755919405,1.180817139434778,HybridPreferenceBias_Tuned,80:20,1.4110297170918988,1.2206689646610542,0.04417787671272918,"GlobalMean digunakan sebagai baseline, model final dipilih karena lebih personal."

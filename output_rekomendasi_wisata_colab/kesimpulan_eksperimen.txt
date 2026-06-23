@@ -1,0 +1,8 @@
+=== KESIMPULAN EKSPERIMEN ===
+Jumlah data rating setelah deduplikasi: 2752
+Sparsity matrix: 92.72%
+Baseline GlobalMean terbaik: split 80:20, RMSE=1.3745, MAE=1.1808
+Model personal tuning terbaik: HybridPreferenceBias_Tuned, split 80:20, RMSE=1.4110, MAE=1.2207, NDCG@10=0.0442
+Model personal tuning belum mengungguli GlobalMean dari sisi RMSE dengan selisih 0.0365. Namun, model personal tetap dipilih sebagai sistem rekomendasi karena menghasilkan prediksi berbeda untuk setiap user dan tempat.
+Evaluasi Top-N menggunakan kandidat negatif sehingga HitRate@10, Precision@10, Recall@10, NDCG@10, MAP@10, dan MRR@10 lebih bermakna.
+Rekomendasi diverse digunakan sebagai output akhir agar hasil rekomendasi tidak didominasi satu kategori wisata.

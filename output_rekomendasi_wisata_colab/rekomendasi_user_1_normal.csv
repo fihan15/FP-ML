@@ -1,0 +1,11 @@
+Place_Id,Place_Name,Category,City,Price,Rating,Time_Minutes,Latitude,Longitude,Predicted_Rating
+139,Puncak Gunung Api Purba - Nglanggeran,Cagar Alam,Yogyakarta,10000,4.7,60.0,-7.841253,110.543056,3.7923
+97,Monumen Yogya Kembali,Budaya,Yogyakarta,15000,4.5,30.0,-7.7495904,110.3696068,3.6987
+112,Bukit Bintang Yogyakarta,Taman Hiburan,Yogyakarta,25000,4.5,90.0,-7.8458407,110.4798457,3.6735
+157,Pantai Baron,Bahari,Yogyakarta,10000,4.4,60.0,-8.1288246,110.5487763,3.6507
+132,Air Terjun Kedung Pedut,Cagar Alam,Yogyakarta,20000,4.5,60.0,-7.7699875,110.1210707,3.5996
+90,Kampung Wisata Taman Sari,Taman Hiburan,Yogyakarta,5000,4.6,60.0,-7.8100673,110.3594581,3.5746
+94,Sumur Gumuling,Taman Hiburan,Yogyakarta,7000,4.5,60.0,-7.8087911,110.3591825,3.5707
+146,Bukit Wisata Pulepayung,Cagar Alam,Yogyakarta,10000,4.5,60.0,-7.8001106,110.1238954,3.5653
+164,Pintoe Langit Dahromo,Cagar Alam,Yogyakarta,2500,4.4,60.0,-7.913608,110.437783,3.5497
+138,Jogja Exotarium,Taman Hiburan,Yogyakarta,20000,4.4,120.0,-7.7280356,110.3591712,3.5441
