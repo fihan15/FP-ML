@@ -534,7 +534,6 @@ page = st.sidebar.radio(
         "Evaluasi Model",
         "Hyperparameter Tuning",
         "Rekomendasi Wisata",
-        "Kesimpulan",
     ],
 )
 
@@ -749,8 +748,6 @@ elif page == "Rekomendasi Wisata":
         available_users = sorted(rating["User_Id"].unique().tolist())
         selected_user = st.selectbox("Pilih User_Id", available_users, index=0)
         top_n = st.slider("Jumlah rekomendasi", min_value=5, max_value=20, value=10)
-        diverse_mode = st.toggle("Gunakan rekomendasi diverse", value=True)
-        max_per_cat = st.slider("Maksimal item per kategori", min_value=1, max_value=5, value=3)
 
     model, params = train_final_model(data, tour, tuning_summary)
 
@@ -760,8 +757,8 @@ elif page == "Rekomendasi Wisata":
         rating,
         tour,
         top_n=top_n,
-        diverse=diverse_mode,
-        max_per_category=max_per_cat,
+        diverse=False,
+        max_per_category=DIVERSE_MAX_PER_CATEGORY,
     )
 
     user_profile = user[user["User_Id"] == int(selected_user)]
@@ -802,52 +799,3 @@ elif page == "Rekomendasi Wisata":
 
     with st.expander("Lihat parameter model final"):
         st.json(params)
-
-# ============================================================
-# PAGE: CONCLUSION
-# ============================================================
-
-elif page == "Kesimpulan":
-    show_title()
-    st.markdown("## Kesimpulan Eksperimen")
-
-    conclusion_path = os.path.join(OUTPUT_DIR, "kesimpulan_eksperimen.txt")
-    if os.path.exists(conclusion_path):
-        with open(conclusion_path, "r", encoding="utf-8") as f:
-            text = f.read()
-        st.text_area("Kesimpulan otomatis", text, height=260)
-    else:
-        st.warning("File kesimpulan_eksperimen.txt belum ditemukan.")
-
-    st.markdown("### Narasi singkat untuk presentasi")
-    st.markdown(
-        """
-        <div class="success-box">
-        Berdasarkan hasil eksperimen, GlobalMean memperoleh RMSE terbaik sebagai baseline. Namun, model tersebut tidak digunakan sebagai model final karena tidak menghasilkan rekomendasi personal.
-        Model final yang digunakan adalah HybridPreferenceBias_Tuned karena menggabungkan bias pengguna, bias tempat wisata, preferensi kategori, preferensi harga, popularitas tempat, dan rating publik.
-        Dataset memiliki sparsity tinggi, sehingga performa model personal masih terbatas. Oleh karena itu, hasil rekomendasi akhir ditampilkan dalam bentuk diverse agar tidak didominasi oleh satu kategori wisata saja.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("### File output")
-    output_files = [
-        "ringkasan_model_final.csv",
-        "hasil_evaluasi_split_model_dasar.csv",
-        "hasil_tuning_ringkasan.csv",
-        "hasil_tuning_detail.csv",
-        "rekomendasi_user_1_normal.csv",
-        "rekomendasi_user_1_diverse.csv",
-        "data_gabungan_bersih.csv",
-    ]
-    for file in output_files:
-        path = os.path.join(OUTPUT_DIR, file)
-        if os.path.exists(path):
-            with open(path, "rb") as f:
-                st.download_button(
-                    label=f"Download {file}",
-                    data=f.read(),
-                    file_name=file,
-                    use_container_width=True,
-                )
