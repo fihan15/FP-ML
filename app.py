@@ -493,6 +493,91 @@ def make_recommendations(model, user_id: int, rating: pd.DataFrame, tour: pd.Dat
     return pd.DataFrame(selected).reset_index(drop=True)
 
 # ============================================================
+# USER PROFILE HELPERS
+# ============================================================
+
+def get_user_rating_persona(avg: float, count: int) -> str:
+    """Klasifikasi gaya pemberian rating user."""
+    if avg >= 4.2:
+        return "Enthusiast 🌟"
+    elif avg >= 3.5:
+        return "Balanced ⚖️"
+    elif avg >= 2.8:
+        return "Selective 🔍"
+    else:
+        return "Critic 🎯"
+
+
+def get_user_category_preference(user_id: int, rating: pd.DataFrame, tour: pd.DataFrame) -> pd.DataFrame:
+    """Hitung rata-rata rating user per kategori."""
+    user_ratings = rating[rating["User_Id"] == int(user_id)].copy()
+    merged = user_ratings.merge(tour[["Place_Id", "Category"]], on="Place_Id", how="left")
+    if merged.empty:
+        return pd.DataFrame(columns=["Category", "Avg_Rating", "Count"])
+    cat_pref = (
+        merged.groupby("Category")
+        .agg(Avg_Rating=("Place_Ratings", "mean"), Count=("Place_Ratings", "count"))
+        .reset_index()
+        .sort_values("Avg_Rating", ascending=False)
+    )
+    return cat_pref
+
+
+def get_user_top_rated(user_id: int, rating: pd.DataFrame, tour: pd.DataFrame, n=5) -> pd.DataFrame:
+    """Ambil tempat wisata yang diberi rating tertinggi user."""
+    user_ratings = rating[rating["User_Id"] == int(user_id)].copy()
+    merged = user_ratings.merge(
+        tour[["Place_Id", "Place_Name", "Category", "City", "Price"]],
+        on="Place_Id",
+        how="left"
+    )
+    merged["Harga"] = merged["Price"].apply(rupiah)
+    return merged.sort_values("Place_Ratings", ascending=False).head(n)
+
+
+def find_similar_users(
+    user_id: int,
+    rating: pd.DataFrame,
+    user: pd.DataFrame,
+    top_n: int = 5,
+) -> pd.DataFrame:
+    """
+    Temukan user paling mirip berdasarkan cosine similarity vektor rating.
+    Hanya membandingkan tempat yang sama-sama pernah dirating.
+    """
+    pivot = rating.pivot_table(index="User_Id", columns="Place_Id", values="Place_Ratings")
+    if int(user_id) not in pivot.index:
+        return pd.DataFrame()
+
+    target = pivot.loc[int(user_id)].fillna(0).values
+    norm_target = np.linalg.norm(target)
+    if norm_target == 0:
+        return pd.DataFrame()
+
+    rows = []
+    for uid in pivot.index:
+        if int(uid) == int(user_id):
+            continue
+        other = pivot.loc[uid].fillna(0).values
+        norm_other = np.linalg.norm(other)
+        if norm_other == 0:
+            continue
+        sim = float(np.dot(target, other) / (norm_target * norm_other))
+        rows.append({"User_Id": uid, "Similarity": sim})
+
+    if not rows:
+        return pd.DataFrame()
+
+    sim_df = (
+        pd.DataFrame(rows)
+        .sort_values("Similarity", ascending=False)
+        .head(top_n)
+        .merge(user, on="User_Id", how="left")
+    )
+    sim_df["Similarity_Pct"] = (sim_df["Similarity"] * 100).round(1)
+    return sim_df.reset_index(drop=True)
+
+# ============================================================
 # DATA INIT
 # ============================================================
 
@@ -762,14 +847,115 @@ elif page == "Rekomendasi Wisata":
     )
 
     user_profile = user[user["User_Id"] == int(selected_user)]
-    rated_user = rating[rating["User_Id"] == int(selected_user)]
-    col1, col2, col3 = st.columns(3)
-    col1.metric("User dipilih", selected_user)
-    col2.metric("Jumlah rating user", len(rated_user))
-    if not user_profile.empty and "Age" in user_profile.columns:
-        col3.metric("Umur", int(user_profile.iloc[0]["Age"]))
+rated_user = rating[rating["User_Id"] == int(selected_user)]
+
+# ── Profil personal user ──────────────────────────────────────
+st.markdown("### Profil user")
+
+age_val = "-"
+loc_val = "-"
+if not user_profile.empty:
+    if "Age" in user_profile.columns:
+        age_val = int(user_profile.iloc[0]["Age"])
+    if "Location" in user_profile.columns:
+        loc_val = str(user_profile.iloc[0]["Location"])
+
+avg_rating_user = float(rated_user["Place_Ratings"].mean()) if not rated_user.empty else 0.0
+persona = get_user_rating_persona(avg_rating_user, len(rated_user))
+
+# Baris metrik ringkas
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("User ID", selected_user)
+col2.metric("Lokasi", loc_val)
+col3.metric("Usia", age_val)
+col4.metric("Persona", persona)
+
+# Dua kolom: preferensi kategori & riwayat rating
+cat_col, hist_col = st.columns(2)
+
+with cat_col:
+    st.markdown("#### Preferensi kategori")
+    cat_pref = get_user_category_preference(int(selected_user), rating, tour)
+    if not cat_pref.empty:
+        max_avg = cat_pref["Avg_Rating"].max()
+        for _, row in cat_pref.iterrows():
+            bar_pct = int((row["Avg_Rating"] / 5.0) * 100)
+            st.markdown(
+                f"""
+                <div style="margin-bottom:8px">
+                  <div style="display:flex;justify-content:space-between;font-size:13px">
+                    <span>{row['Category']}</span>
+                    <span style="color:#888">{row['Avg_Rating']:.2f} ★ &nbsp;({int(row['Count'])} ulasan)</span>
+                  </div>
+                  <div style="background:rgba(49,51,63,.1);border-radius:4px;height:7px;overflow:hidden;margin-top:3px">
+                    <div style="width:{bar_pct}%;height:7px;background:#4F8EF7;border-radius:4px"></div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
     else:
-        col3.metric("Umur", "-")
+        st.caption("Belum ada data rating.")
+
+with hist_col:
+    st.markdown("#### Riwayat rating tertinggi")
+    top_rated = get_user_top_rated(int(selected_user), rating, tour, n=6)
+    if not top_rated.empty:
+        display_hist = top_rated[["Place_Name", "Category", "Harga", "Place_Ratings"]].rename(
+            columns={"Place_Ratings": "Rating", "Place_Name": "Tempat"}
+        )
+        st.dataframe(display_hist, use_container_width=True, hide_index=True)
+    else:
+        st.caption("Belum ada riwayat rating.")
+
+# Distribusi rating user (chart kecil)
+if not rated_user.empty:
+    with st.expander("Lihat distribusi rating user ini"):
+        dist = rated_user["Place_Ratings"].value_counts().sort_index().reset_index()
+        dist.columns = ["Rating", "Jumlah"]
+        fig_dist = px.bar(
+            dist, x="Rating", y="Jumlah",
+            text="Jumlah",
+            title=f"Distribusi rating yang diberikan User {selected_user}",
+            height=300,
+        )
+        fig_dist.update_traces(textposition="outside")
+        fig_dist.update_layout(margin=dict(t=40, b=20))
+        st.plotly_chart(fig_dist, use_container_width=True)
+
+# User serupa
+st.markdown("#### User dengan selera serupa")
+with st.spinner("Menghitung kesamaan antar user..."):
+    similar_users = find_similar_users(int(selected_user), rating, user, top_n=5)
+
+if not similar_users.empty:
+    show_sim_cols = ["User_Id", "Location", "Age", "Similarity_Pct"]
+    show_sim_cols = [c for c in show_sim_cols if c in similar_users.columns]
+    similar_users_display = similar_users[show_sim_cols].copy()
+    similar_users_display = similar_users_display.rename(columns={
+        "User_Id": "User ID",
+        "Location": "Lokasi",
+        "Age": "Usia",
+        "Similarity_Pct": "Kesamaan (%)",
+    })
+    st.dataframe(similar_users_display, use_container_width=True, hide_index=True)
+
+    # Kategori favorit tiap user serupa sebagai konteks
+    with st.expander("Lihat preferensi user serupa"):
+        for _, sim_row in similar_users.head(3).iterrows():
+            sim_uid = int(sim_row["User_Id"])
+            sim_loc = sim_row.get("Location", "-")
+            sim_pct = sim_row["Similarity_Pct"]
+            st.markdown(f"**User {sim_uid}** ({sim_loc}) — kesamaan {sim_pct}%")
+            sim_cat = get_user_category_preference(sim_uid, rating, tour)
+            if not sim_cat.empty:
+                top_cats = ", ".join(sim_cat.head(3)["Category"].tolist())
+                st.caption(f"Kategori favorit: {top_cats}")
+            st.divider()
+else:
+    st.caption("Tidak cukup data untuk menemukan user serupa.")
+
+st.markdown("---")
 
     st.markdown("### Hasil rekomendasi")
     if rec.empty:
