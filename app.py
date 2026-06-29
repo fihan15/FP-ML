@@ -848,8 +848,6 @@ elif page == "Rekomendasi Wisata":
 
     user_profile = user[user["User_Id"] == int(selected_user)]
 rated_user = rating[rating["User_Id"] == int(selected_user)]
-
-# ── Profil personal user ──────────────────────────────────────
 st.markdown("### Profil user")
 
 age_val = "-"
